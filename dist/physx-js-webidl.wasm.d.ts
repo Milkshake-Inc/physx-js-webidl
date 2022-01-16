@@ -925,6 +925,10 @@ declare module PhysX {
         maxNbRegions: number;
         maxNbBroadPhaseOverlaps: number;
     }
+    class PxShapeExt {
+        static getGlobalPose(shape: PxShape, actor: PxRigidActor): PxTransform;
+        static getWorldBounds(shape: PxShape, actor: PxRigidActor, inflation?: number): PxBounds3;
+    }
     class PxShape extends PxBase {
         getReferenceCount(): number;
         acquireReference(): void;

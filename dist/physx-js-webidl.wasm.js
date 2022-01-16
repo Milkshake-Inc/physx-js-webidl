@@ -1,11 +1,12 @@
+export let Instance;
 
 
-var PhysX = (function() {
-  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
-  if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;
+var SetupPhysX = (function() {
+  var _scriptDir = import.meta.url;
+  
   return (
-function(PhysX) {
-  PhysX = PhysX || {};
+function(SetupPhysX) {
+  SetupPhysX = SetupPhysX || {};
 
 
 
@@ -22,7 +23,7 @@ function(PhysX) {
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-var Module = typeof PhysX !== 'undefined' ? PhysX : {};
+var Module = typeof SetupPhysX !== 'undefined' ? SetupPhysX : {};
 
 
 // Set up the promise that indicates the Module is initialized
@@ -1264,9 +1265,9 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-var STACK_BASE = 5510960,
+var STACK_BASE = 5511040,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 268080;
+    STACK_MAX = 268160;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 
@@ -6382,6 +6383,18 @@ var _emscripten_bind_PxSceneLimits_set_maxNbBroadPhaseOverlaps_1 = Module["_emsc
 
 /** @type {function(...*):?} */
 var _emscripten_bind_PxSceneLimits___destroy___0 = Module["_emscripten_bind_PxSceneLimits___destroy___0"] = createExportWrapper("emscripten_bind_PxSceneLimits___destroy___0");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_PxShapeExt_getGlobalPose_2 = Module["_emscripten_bind_PxShapeExt_getGlobalPose_2"] = createExportWrapper("emscripten_bind_PxShapeExt_getGlobalPose_2");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_PxShapeExt_getWorldBounds_2 = Module["_emscripten_bind_PxShapeExt_getWorldBounds_2"] = createExportWrapper("emscripten_bind_PxShapeExt_getWorldBounds_2");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_PxShapeExt_getWorldBounds_3 = Module["_emscripten_bind_PxShapeExt_getWorldBounds_3"] = createExportWrapper("emscripten_bind_PxShapeExt_getWorldBounds_3");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_PxShapeExt___destroy___0 = Module["_emscripten_bind_PxShapeExt___destroy___0"] = createExportWrapper("emscripten_bind_PxShapeExt___destroy___0");
 
 /** @type {function(...*):?} */
 var _emscripten_bind_PxShape_getReferenceCount_0 = Module["_emscripten_bind_PxShape_getReferenceCount_0"] = createExportWrapper("emscripten_bind_PxShape_getReferenceCount_0");
@@ -21770,6 +21783,34 @@ PxSceneLimits.prototype['isValid'] = PxSceneLimits.prototype.isValid = /** @supp
   var self = this.ptr;
   _emscripten_bind_PxSceneLimits___destroy___0(self);
 };
+// PxShapeExt
+/** @suppress {undefinedVars, duplicate} @this{Object} */function PxShapeExt() { throw "cannot construct a PxShapeExt, no constructor in IDL" }
+PxShapeExt.prototype = Object.create(WrapperObject.prototype);
+PxShapeExt.prototype.constructor = PxShapeExt;
+PxShapeExt.prototype.__class__ = PxShapeExt;
+PxShapeExt.__cache__ = {};
+Module['PxShapeExt'] = PxShapeExt;
+
+PxShapeExt.prototype['getGlobalPose'] = PxShapeExt.prototype.getGlobalPose = /** @suppress {undefinedVars, duplicate} @this{Object} */function(shape, actor) {
+  var self = this.ptr;
+  if (shape && typeof shape === 'object') shape = shape.ptr;
+  if (actor && typeof actor === 'object') actor = actor.ptr;
+  return wrapPointer(_emscripten_bind_PxShapeExt_getGlobalPose_2(self, shape, actor), PxTransform);
+};;
+
+PxShapeExt.prototype['getWorldBounds'] = PxShapeExt.prototype.getWorldBounds = /** @suppress {undefinedVars, duplicate} @this{Object} */function(shape, actor, inflation) {
+  var self = this.ptr;
+  if (shape && typeof shape === 'object') shape = shape.ptr;
+  if (actor && typeof actor === 'object') actor = actor.ptr;
+  if (inflation && typeof inflation === 'object') inflation = inflation.ptr;
+  if (inflation === undefined) { return wrapPointer(_emscripten_bind_PxShapeExt_getWorldBounds_2(self, shape, actor), PxBounds3) }
+  return wrapPointer(_emscripten_bind_PxShapeExt_getWorldBounds_3(self, shape, actor, inflation), PxBounds3);
+};;
+
+  PxShapeExt.prototype['__destroy__'] = PxShapeExt.prototype.__destroy__ = /** @suppress {undefinedVars, duplicate} @this{Object} */function() {
+  var self = this.ptr;
+  _emscripten_bind_PxShapeExt___destroy___0(self);
+};
 // PxShape
 /** @suppress {undefinedVars, duplicate} @this{Object} */function PxShape() { throw "cannot construct a PxShape, no constructor in IDL" }
 PxShape.prototype = Object.create(PxBase.prototype);
@@ -34287,18 +34328,12 @@ JavaPassThroughFilterShader.prototype['filterShader'] = JavaPassThroughFilterSha
   else addOnPreMain(setupEnums);
 })();
 
-// Reassign global PhysX to the loaded module:
-this['PhysX'] = Module;
+Instance = Module;
 
 
-  return PhysX.ready
+
+  return SetupPhysX.ready
 }
 );
 })();
-if (typeof exports === 'object' && typeof module === 'object')
-      module.exports = PhysX;
-    else if (typeof define === 'function' && define['amd'])
-      define([], function() { return PhysX; });
-    else if (typeof exports === 'object')
-      exports["PhysX"] = PhysX;
-    
+export default SetupPhysX;
