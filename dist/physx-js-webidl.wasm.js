@@ -1,12 +1,12 @@
-export let Instance;
+export var PhysX;
+export
 
-
-var SetupPhysX = (function() {
-  var _scriptDir = import.meta.url;
-  
+var createModule = (function() {
+  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+  if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;
   return (
-function(SetupPhysX) {
-  SetupPhysX = SetupPhysX || {};
+function(createModule) {
+  createModule = createModule || {};
 
 
 
@@ -23,7 +23,7 @@ function(SetupPhysX) {
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-var Module = typeof SetupPhysX !== 'undefined' ? SetupPhysX : {};
+var Module = typeof createModule !== 'undefined' ? createModule : {};
 
 
 // Set up the promise that indicates the Module is initialized
@@ -34328,12 +34328,17 @@ JavaPassThroughFilterShader.prototype['filterShader'] = JavaPassThroughFilterSha
   else addOnPreMain(setupEnums);
 })();
 
-Instance = Module;
+PhysX = createModule;
 
 
-
-  return SetupPhysX.ready
+  return createModule.ready
 }
 );
 })();
-export default SetupPhysX;
+if (typeof exports === 'object' && typeof module === 'object')
+      module.exports = createModule;
+    else if (typeof define === 'function' && define['amd'])
+      define([], function() { return createModule; });
+    else if (typeof exports === 'object')
+      exports["createModule"] = createModule;
+    

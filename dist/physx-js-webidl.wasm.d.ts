@@ -1,6 +1,5 @@
-export default Instance;
-declare function Instance<T>(target?: T): Promise<T & typeof Instance>;
-export declare namespace Instance {
+declare function createModule(): Promise<PhysX>;
+export declare namespace PhysX {
     function destroy(obj: any): void;
     function _malloc(size: number): number;
     function _free(ptr: number): void;
