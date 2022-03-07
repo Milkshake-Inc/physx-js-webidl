@@ -1540,6 +1540,8 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 
 /** @param {string|number=} what */
 function abort(what) {
+throw what;
+
   if (Module['onAbort']) {
     Module['onAbort'](what);
   }
