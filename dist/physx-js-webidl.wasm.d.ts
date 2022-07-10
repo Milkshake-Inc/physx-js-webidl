@@ -1,5 +1,6 @@
-declare function createModule(): Promise<PhysX>;
-export declare namespace PhysX {
+export default Instance;
+declare function Instance<T>(target?: T): Promise<T & typeof Instance>;
+export declare namespace Instance {
     function destroy(obj: any): void;
     function _malloc(size: number): number;
     function _free(ptr: number): void;
@@ -2515,6 +2516,7 @@ export declare namespace PhysX {
     class SupportFunctions {
         static PxActor_getShape(actor: PxRigidActor, index: number): PxShape;
         static PxContactPairHeader_getActor(pairHeader: PxContactPairHeader, index: number): PxActor;
+        static PxContactPair_getShape(pairHeader: PxContactPair, index: number): PxShape;
         static PxScene_getActiveActors(scene: PxScene): Vector_PxActorPtr;
     }
     class PxActorPtr {
