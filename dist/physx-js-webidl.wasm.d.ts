@@ -31,8 +31,7 @@ export declare namespace PhysX {
         static PrismaticJointCreate(physics: PxPhysics, actor0: PxRigidActor, localFrame0: PxTransform, actor1: PxRigidActor, localFrame1: PxTransform): PxPrismaticJoint;
         static RevoluteJointCreate(physics: PxPhysics, actor0: PxRigidActor, localFrame0: PxTransform, actor1: PxRigidActor, localFrame1: PxTransform): PxRevoluteJoint;
         static SphericalJointCreate(physics: PxPhysics, actor0: PxRigidActor, localFrame0: PxTransform, actor1: PxRigidActor, localFrame1: PxTransform): PxSphericalJoint;
-
-        static CreateRaycastCCD(scene: PxScene):RaycastCCDManager;
+        static CreateRaycastCCD(scene: PxScene): RaycastCCDManager;
     }
     class RaycastCCDManager {
         registerRaycastCCDObject(actor: PxRigidDynamic, shape: PxShape): boolean;
