@@ -1265,9 +1265,9 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-var STACK_BASE = 5511040,
+var STACK_BASE = 5511360,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 268160;
+    STACK_MAX = 268480;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 
@@ -3552,10 +3552,19 @@ var _emscripten_bind_PxTopLevelFunctions_RevoluteJointCreate_5 = Module["_emscri
 var _emscripten_bind_PxTopLevelFunctions_SphericalJointCreate_5 = Module["_emscripten_bind_PxTopLevelFunctions_SphericalJointCreate_5"] = createExportWrapper("emscripten_bind_PxTopLevelFunctions_SphericalJointCreate_5");
 
 /** @type {function(...*):?} */
+var _emscripten_bind_PxTopLevelFunctions_CreateRaycastCCD_1 = Module["_emscripten_bind_PxTopLevelFunctions_CreateRaycastCCD_1"] = createExportWrapper("emscripten_bind_PxTopLevelFunctions_CreateRaycastCCD_1");
+
+/** @type {function(...*):?} */
 var _emscripten_bind_PxTopLevelFunctions_get_PHYSICS_VERSION_0 = Module["_emscripten_bind_PxTopLevelFunctions_get_PHYSICS_VERSION_0"] = createExportWrapper("emscripten_bind_PxTopLevelFunctions_get_PHYSICS_VERSION_0");
 
 /** @type {function(...*):?} */
 var _emscripten_bind_PxTopLevelFunctions___destroy___0 = Module["_emscripten_bind_PxTopLevelFunctions___destroy___0"] = createExportWrapper("emscripten_bind_PxTopLevelFunctions___destroy___0");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2 = Module["_emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2"] = createExportWrapper("emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_RaycastCCDManager_doRaycastCCD_1 = Module["_emscripten_bind_RaycastCCDManager_doRaycastCCD_1"] = createExportWrapper("emscripten_bind_RaycastCCDManager_doRaycastCCD_1");
 
 /** @type {function(...*):?} */
 var _emscripten_bind_PxActorFlags_PxActorFlags_1 = Module["_emscripten_bind_PxActorFlags_PxActorFlags_1"] = createExportWrapper("emscripten_bind_PxActorFlags_PxActorFlags_1");
@@ -16541,6 +16550,12 @@ PxTopLevelFunctions.prototype['SphericalJointCreate'] = PxTopLevelFunctions.prot
   return wrapPointer(_emscripten_bind_PxTopLevelFunctions_SphericalJointCreate_5(self, physics, actor0, localFrame0, actor1, localFrame1), PxSphericalJoint);
 };;
 
+PxTopLevelFunctions.prototype['CreateRaycastCCD'] = PxTopLevelFunctions.prototype.CreateRaycastCCD = /** @suppress {undefinedVars, duplicate} @this{Object} */function(scene) {
+  var self = this.ptr;
+  if (scene && typeof scene === 'object') scene = scene.ptr;
+  return wrapPointer(_emscripten_bind_PxTopLevelFunctions_CreateRaycastCCD_1(self, scene), RaycastCCDManager);
+};;
+
   PxTopLevelFunctions.prototype['get_PHYSICS_VERSION'] = PxTopLevelFunctions.prototype.get_PHYSICS_VERSION = /** @suppress {undefinedVars, duplicate} @this{Object} */function() {
   var self = this.ptr;
   return _emscripten_bind_PxTopLevelFunctions_get_PHYSICS_VERSION_0(self);
@@ -16550,6 +16565,27 @@ PxTopLevelFunctions.prototype['SphericalJointCreate'] = PxTopLevelFunctions.prot
   var self = this.ptr;
   _emscripten_bind_PxTopLevelFunctions___destroy___0(self);
 };
+// RaycastCCDManager
+/** @suppress {undefinedVars, duplicate} @this{Object} */function RaycastCCDManager() { throw "cannot construct a RaycastCCDManager, no constructor in IDL" }
+RaycastCCDManager.prototype = Object.create(WrapperObject.prototype);
+RaycastCCDManager.prototype.constructor = RaycastCCDManager;
+RaycastCCDManager.prototype.__class__ = RaycastCCDManager;
+RaycastCCDManager.__cache__ = {};
+Module['RaycastCCDManager'] = RaycastCCDManager;
+
+RaycastCCDManager.prototype['registerRaycastCCDObject'] = RaycastCCDManager.prototype.registerRaycastCCDObject = /** @suppress {undefinedVars, duplicate} @this{Object} */function(actor, shape) {
+  var self = this.ptr;
+  if (actor && typeof actor === 'object') actor = actor.ptr;
+  if (shape && typeof shape === 'object') shape = shape.ptr;
+  return !!(_emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2(self, actor, shape));
+};;
+
+RaycastCCDManager.prototype['doRaycastCCD'] = RaycastCCDManager.prototype.doRaycastCCD = /** @suppress {undefinedVars, duplicate} @this{Object} */function(doDynamicDynamicCCD) {
+  var self = this.ptr;
+  if (doDynamicDynamicCCD && typeof doDynamicDynamicCCD === 'object') doDynamicDynamicCCD = doDynamicDynamicCCD.ptr;
+  _emscripten_bind_RaycastCCDManager_doRaycastCCD_1(self, doDynamicDynamicCCD);
+};;
+
 // PxActorFlags
 /** @suppress {undefinedVars, duplicate} @this{Object} */function PxActorFlags(flags) {
   if (flags && typeof flags === 'object') flags = flags.ptr;
