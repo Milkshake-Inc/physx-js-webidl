@@ -226,12 +226,6 @@ readBinary = function readBinary(filename) {
 
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
 
-  process['on']('uncaughtException', function(ex) {
-    // suppress ExitStatus exceptions from showing an error
-    if (!(ex instanceof ExitStatus)) {
-      throw ex;
-    }
-  });
 
   process['on']('unhandledRejection', abort);
 
