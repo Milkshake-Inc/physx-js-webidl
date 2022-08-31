@@ -34377,10 +34377,3 @@ PhysX = createModule;
 }
 );
 })();
-if (typeof exports === 'object' && typeof module === 'object')
-      module.exports = createModule;
-    else if (typeof define === 'function' && define['amd'])
-      define([], function() { return createModule; });
-    else if (typeof exports === 'object')
-      exports["createModule"] = createModule;
-    
