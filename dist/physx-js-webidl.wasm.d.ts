@@ -35,6 +35,7 @@ export declare namespace PhysX {
     }
     class RaycastCCDManager {
         registerRaycastCCDObject(actor: PxRigidDynamic, shape: PxShape): boolean;
+        unregisterRaycastCCDObject(actor: PxRigidDynamic, shape: PxShape): boolean;
         doRaycastCCD(doDynamicDynamicCCD: boolean): void;
     }
     class PxActor extends PxBase {

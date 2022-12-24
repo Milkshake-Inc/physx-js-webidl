@@ -3611,6 +3611,9 @@ var _emscripten_bind_PxTopLevelFunctions___destroy___0 = Module["_emscripten_bin
 var _emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2 = Module["_emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2"] = createExportWrapper("emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2");
 
 /** @type {function(...*):?} */
+var _emscripten_bind_RaycastCCDManager_unregisterRaycastCCDObject_2 = Module["_emscripten_bind_RaycastCCDManager_unregisterRaycastCCDObject_2"] = createExportWrapper("emscripten_bind_RaycastCCDManager_unregisterRaycastCCDObject_2");
+
+/** @type {function(...*):?} */
 var _emscripten_bind_RaycastCCDManager_doRaycastCCD_1 = Module["_emscripten_bind_RaycastCCDManager_doRaycastCCD_1"] = createExportWrapper("emscripten_bind_RaycastCCDManager_doRaycastCCD_1");
 
 /** @type {function(...*):?} */
@@ -16624,6 +16627,13 @@ RaycastCCDManager.prototype['registerRaycastCCDObject'] = RaycastCCDManager.prot
   if (actor && typeof actor === 'object') actor = actor.ptr;
   if (shape && typeof shape === 'object') shape = shape.ptr;
   return !!(_emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2(self, actor, shape));
+};;
+
+RaycastCCDManager.prototype['unregisterRaycastCCDObject'] = RaycastCCDManager.prototype.unregisterRaycastCCDObject = /** @suppress {undefinedVars, duplicate} @this{Object} */function(actor, shape) {
+  var self = this.ptr;
+  if (actor && typeof actor === 'object') actor = actor.ptr;
+  if (shape && typeof shape === 'object') shape = shape.ptr;
+  return !!(_emscripten_bind_RaycastCCDManager_unregisterRaycastCCDObject_2(self, actor, shape));
 };;
 
 RaycastCCDManager.prototype['doRaycastCCD'] = RaycastCCDManager.prototype.doRaycastCCD = /** @suppress {undefinedVars, duplicate} @this{Object} */function(doDynamicDynamicCCD) {
