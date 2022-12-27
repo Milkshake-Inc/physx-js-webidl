@@ -1,11 +1,12 @@
+export var PhysX;
+export
 
-
-var PhysX = (function() {
+var createModule = (function() {
   var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
   if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;
   return (
-function(PhysX) {
-  PhysX = PhysX || {};
+function(createModule) {
+  createModule = createModule || {};
 
 
 
@@ -22,7 +23,7 @@ function(PhysX) {
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-var Module = typeof PhysX !== 'undefined' ? PhysX : {};
+var Module = typeof createModule !== 'undefined' ? createModule : {};
 
 
 // Set up the promise that indicates the Module is initialized
@@ -225,12 +226,6 @@ readBinary = function readBinary(filename) {
 
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
 
-  process['on']('uncaughtException', function(ex) {
-    // suppress ExitStatus exceptions from showing an error
-    if (!(ex instanceof ExitStatus)) {
-      throw ex;
-    }
-  });
 
   process['on']('unhandledRejection', abort);
 
@@ -1264,9 +1259,9 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-var STACK_BASE = 5696992,
+var STACK_BASE = 5697360,
     STACKTOP = STACK_BASE,
-    STACK_MAX = 454112;
+    STACK_MAX = 454480;
 
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 
@@ -1298,7 +1293,7 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
     wasmMemory = new WebAssembly.Memory({
       'initial': INITIAL_INITIAL_MEMORY / WASM_PAGE_SIZE
       ,
-      'maximum': INITIAL_INITIAL_MEMORY / WASM_PAGE_SIZE
+      'maximum': 2147483648 / WASM_PAGE_SIZE
     });
   }
 
@@ -1311,6 +1306,7 @@ if (wasmMemory) {
 // specifically provide the memory length with Module['INITIAL_MEMORY'].
 INITIAL_INITIAL_MEMORY = buffer.byteLength;
 assert(INITIAL_INITIAL_MEMORY % WASM_PAGE_SIZE === 0);
+assert(65536 % WASM_PAGE_SIZE === 0);
 updateGlobalBufferAndViews(buffer);
 
 
@@ -1539,6 +1535,8 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 
 /** @param {string|number=} what */
 function abort(what) {
+throw what;
+
   if (Module['onAbort']) {
     Module['onAbort'](what);
   }
@@ -2034,12 +2032,64 @@ function array_bounds_check_error(idx,size){ throw 'Array index ' + idx + ' out 
       return HEAPU8.length;
     }
   
-  function abortOnCannotGrowMemory(requestedSize) {
-      abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s INITIAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+  function emscripten_realloc_buffer(size) {
+      try {
+        // round size grow request up to wasm page size (fixed 64KB per spec)
+        wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
+        updateGlobalBufferAndViews(wasmMemory.buffer);
+        return 1 /*success*/;
+      } catch(e) {
+        console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+      }
+      // implicit 0 return to save code size (caller will cast "undefined" into 0
+      // anyhow)
     }
   function _emscripten_resize_heap(requestedSize) {
       requestedSize = requestedSize >>> 0;
-      abortOnCannotGrowMemory(requestedSize);
+      var oldSize = _emscripten_get_heap_size();
+      // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
+      assert(requestedSize > oldSize);
+  
+  
+      // Memory resize rules:
+      // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
+      // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
+      // 3a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
+      //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
+      //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
+      // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
+      // 4. Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
+      // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
+      //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
+  
+      // A limit was set for how much we can grow. We should not exceed that
+      // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
+      var maxHeapSize = 2147483648;
+      if (requestedSize > maxHeapSize) {
+        err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
+        return false;
+      }
+  
+      var minHeapSize = 16777216;
+  
+      // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
+      // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
+      for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+        var overGrownHeapSize = oldSize * (1 + 0.2 / cutDown); // ensure geometric growth
+        // but limit overreserving (default to capping at +96MB overgrowth at most)
+        overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 100663296 );
+  
+  
+        var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), 65536));
+  
+        var replacement = emscripten_realloc_buffer(newSize);
+        if (replacement) {
+  
+          return true;
+        }
+      }
+      err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
+      return false;
     }
 
   function flush_NO_FILESYSTEM() {
@@ -3549,10 +3599,25 @@ var _emscripten_bind_PxTopLevelFunctions_RevoluteJointCreate_5 = Module["_emscri
 var _emscripten_bind_PxTopLevelFunctions_SphericalJointCreate_5 = Module["_emscripten_bind_PxTopLevelFunctions_SphericalJointCreate_5"] = createExportWrapper("emscripten_bind_PxTopLevelFunctions_SphericalJointCreate_5");
 
 /** @type {function(...*):?} */
+var _emscripten_bind_PxTopLevelFunctions_CreateRaycastCCD_1 = Module["_emscripten_bind_PxTopLevelFunctions_CreateRaycastCCD_1"] = createExportWrapper("emscripten_bind_PxTopLevelFunctions_CreateRaycastCCD_1");
+
+/** @type {function(...*):?} */
 var _emscripten_bind_PxTopLevelFunctions_get_PHYSICS_VERSION_0 = Module["_emscripten_bind_PxTopLevelFunctions_get_PHYSICS_VERSION_0"] = createExportWrapper("emscripten_bind_PxTopLevelFunctions_get_PHYSICS_VERSION_0");
 
 /** @type {function(...*):?} */
 var _emscripten_bind_PxTopLevelFunctions___destroy___0 = Module["_emscripten_bind_PxTopLevelFunctions___destroy___0"] = createExportWrapper("emscripten_bind_PxTopLevelFunctions___destroy___0");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2 = Module["_emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2"] = createExportWrapper("emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_RaycastCCDManager_unregisterRaycastCCDObject_2 = Module["_emscripten_bind_RaycastCCDManager_unregisterRaycastCCDObject_2"] = createExportWrapper("emscripten_bind_RaycastCCDManager_unregisterRaycastCCDObject_2");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_RaycastCCDManager_release_0 = Module["_emscripten_bind_RaycastCCDManager_release_0"] = createExportWrapper("emscripten_bind_RaycastCCDManager_release_0");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_RaycastCCDManager_doRaycastCCD_1 = Module["_emscripten_bind_RaycastCCDManager_doRaycastCCD_1"] = createExportWrapper("emscripten_bind_RaycastCCDManager_doRaycastCCD_1");
 
 /** @type {function(...*):?} */
 var _emscripten_bind_PxActorFlags_PxActorFlags_1 = Module["_emscripten_bind_PxActorFlags_PxActorFlags_1"] = createExportWrapper("emscripten_bind_PxActorFlags_PxActorFlags_1");
@@ -6382,6 +6447,18 @@ var _emscripten_bind_PxSceneLimits_set_maxNbBroadPhaseOverlaps_1 = Module["_emsc
 
 /** @type {function(...*):?} */
 var _emscripten_bind_PxSceneLimits___destroy___0 = Module["_emscripten_bind_PxSceneLimits___destroy___0"] = createExportWrapper("emscripten_bind_PxSceneLimits___destroy___0");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_PxShapeExt_getGlobalPose_2 = Module["_emscripten_bind_PxShapeExt_getGlobalPose_2"] = createExportWrapper("emscripten_bind_PxShapeExt_getGlobalPose_2");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_PxShapeExt_getWorldBounds_2 = Module["_emscripten_bind_PxShapeExt_getWorldBounds_2"] = createExportWrapper("emscripten_bind_PxShapeExt_getWorldBounds_2");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_PxShapeExt_getWorldBounds_3 = Module["_emscripten_bind_PxShapeExt_getWorldBounds_3"] = createExportWrapper("emscripten_bind_PxShapeExt_getWorldBounds_3");
+
+/** @type {function(...*):?} */
+var _emscripten_bind_PxShapeExt___destroy___0 = Module["_emscripten_bind_PxShapeExt___destroy___0"] = createExportWrapper("emscripten_bind_PxShapeExt___destroy___0");
 
 /** @type {function(...*):?} */
 var _emscripten_bind_PxShape_getReferenceCount_0 = Module["_emscripten_bind_PxShape_getReferenceCount_0"] = createExportWrapper("emscripten_bind_PxShape_getReferenceCount_0");
@@ -11835,6 +11912,9 @@ var _emscripten_bind_SupportFunctions_PxActor_getShape_2 = Module["_emscripten_b
 var _emscripten_bind_SupportFunctions_PxContactPairHeader_getActor_2 = Module["_emscripten_bind_SupportFunctions_PxContactPairHeader_getActor_2"] = createExportWrapper("emscripten_bind_SupportFunctions_PxContactPairHeader_getActor_2");
 
 /** @type {function(...*):?} */
+var _emscripten_bind_SupportFunctions_PxContactPair_getShape_2 = Module["_emscripten_bind_SupportFunctions_PxContactPair_getShape_2"] = createExportWrapper("emscripten_bind_SupportFunctions_PxContactPair_getShape_2");
+
+/** @type {function(...*):?} */
 var _emscripten_bind_SupportFunctions_PxScene_getActiveActors_1 = Module["_emscripten_bind_SupportFunctions_PxScene_getActiveActors_1"] = createExportWrapper("emscripten_bind_SupportFunctions_PxScene_getActiveActors_1");
 
 /** @type {function(...*):?} */
@@ -13455,7 +13535,6 @@ if (!Object.getOwnPropertyDescriptor(Module, "setTempRet0")) Module["setTempRet0
 if (!Object.getOwnPropertyDescriptor(Module, "callMain")) Module["callMain"] = function() { abort("'callMain' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Object.getOwnPropertyDescriptor(Module, "abort")) Module["abort"] = function() { abort("'abort' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Object.getOwnPropertyDescriptor(Module, "stringToNewUTF8")) Module["stringToNewUTF8"] = function() { abort("'stringToNewUTF8' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
-if (!Object.getOwnPropertyDescriptor(Module, "abortOnCannotGrowMemory")) Module["abortOnCannotGrowMemory"] = function() { abort("'abortOnCannotGrowMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Object.getOwnPropertyDescriptor(Module, "emscripten_realloc_buffer")) Module["emscripten_realloc_buffer"] = function() { abort("'emscripten_realloc_buffer' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Object.getOwnPropertyDescriptor(Module, "ENV")) Module["ENV"] = function() { abort("'ENV' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
 if (!Object.getOwnPropertyDescriptor(Module, "ERRNO_CODES")) Module["ERRNO_CODES"] = function() { abort("'ERRNO_CODES' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)") };
@@ -16523,6 +16602,12 @@ PxTopLevelFunctions.prototype['SphericalJointCreate'] = PxTopLevelFunctions.prot
   return wrapPointer(_emscripten_bind_PxTopLevelFunctions_SphericalJointCreate_5(self, physics, actor0, localFrame0, actor1, localFrame1), PxSphericalJoint);
 };;
 
+PxTopLevelFunctions.prototype['CreateRaycastCCD'] = PxTopLevelFunctions.prototype.CreateRaycastCCD = /** @suppress {undefinedVars, duplicate} @this{Object} */function(scene) {
+  var self = this.ptr;
+  if (scene && typeof scene === 'object') scene = scene.ptr;
+  return wrapPointer(_emscripten_bind_PxTopLevelFunctions_CreateRaycastCCD_1(self, scene), RaycastCCDManager);
+};;
+
   PxTopLevelFunctions.prototype['get_PHYSICS_VERSION'] = PxTopLevelFunctions.prototype.get_PHYSICS_VERSION = /** @suppress {undefinedVars, duplicate} @this{Object} */function() {
   var self = this.ptr;
   return _emscripten_bind_PxTopLevelFunctions_get_PHYSICS_VERSION_0(self);
@@ -16532,6 +16617,39 @@ PxTopLevelFunctions.prototype['SphericalJointCreate'] = PxTopLevelFunctions.prot
   var self = this.ptr;
   _emscripten_bind_PxTopLevelFunctions___destroy___0(self);
 };
+// RaycastCCDManager
+/** @suppress {undefinedVars, duplicate} @this{Object} */function RaycastCCDManager() { throw "cannot construct a RaycastCCDManager, no constructor in IDL" }
+RaycastCCDManager.prototype = Object.create(WrapperObject.prototype);
+RaycastCCDManager.prototype.constructor = RaycastCCDManager;
+RaycastCCDManager.prototype.__class__ = RaycastCCDManager;
+RaycastCCDManager.__cache__ = {};
+Module['RaycastCCDManager'] = RaycastCCDManager;
+
+RaycastCCDManager.prototype['registerRaycastCCDObject'] = RaycastCCDManager.prototype.registerRaycastCCDObject = /** @suppress {undefinedVars, duplicate} @this{Object} */function(actor, shape) {
+  var self = this.ptr;
+  if (actor && typeof actor === 'object') actor = actor.ptr;
+  if (shape && typeof shape === 'object') shape = shape.ptr;
+  return !!(_emscripten_bind_RaycastCCDManager_registerRaycastCCDObject_2(self, actor, shape));
+};;
+
+RaycastCCDManager.prototype['unregisterRaycastCCDObject'] = RaycastCCDManager.prototype.unregisterRaycastCCDObject = /** @suppress {undefinedVars, duplicate} @this{Object} */function(actor, shape) {
+  var self = this.ptr;
+  if (actor && typeof actor === 'object') actor = actor.ptr;
+  if (shape && typeof shape === 'object') shape = shape.ptr;
+  return !!(_emscripten_bind_RaycastCCDManager_unregisterRaycastCCDObject_2(self, actor, shape));
+};;
+
+RaycastCCDManager.prototype['release'] = RaycastCCDManager.prototype.release = /** @suppress {undefinedVars, duplicate} @this{Object} */function() {
+  var self = this.ptr;
+  _emscripten_bind_RaycastCCDManager_release_0(self);
+};;
+
+RaycastCCDManager.prototype['doRaycastCCD'] = RaycastCCDManager.prototype.doRaycastCCD = /** @suppress {undefinedVars, duplicate} @this{Object} */function(doDynamicDynamicCCD) {
+  var self = this.ptr;
+  if (doDynamicDynamicCCD && typeof doDynamicDynamicCCD === 'object') doDynamicDynamicCCD = doDynamicDynamicCCD.ptr;
+  _emscripten_bind_RaycastCCDManager_doRaycastCCD_1(self, doDynamicDynamicCCD);
+};;
+
 // PxActorFlags
 /** @suppress {undefinedVars, duplicate} @this{Object} */function PxActorFlags(flags) {
   if (flags && typeof flags === 'object') flags = flags.ptr;
@@ -21769,6 +21887,34 @@ PxSceneLimits.prototype['isValid'] = PxSceneLimits.prototype.isValid = /** @supp
   PxSceneLimits.prototype['__destroy__'] = PxSceneLimits.prototype.__destroy__ = /** @suppress {undefinedVars, duplicate} @this{Object} */function() {
   var self = this.ptr;
   _emscripten_bind_PxSceneLimits___destroy___0(self);
+};
+// PxShapeExt
+/** @suppress {undefinedVars, duplicate} @this{Object} */function PxShapeExt() { throw "cannot construct a PxShapeExt, no constructor in IDL" }
+PxShapeExt.prototype = Object.create(WrapperObject.prototype);
+PxShapeExt.prototype.constructor = PxShapeExt;
+PxShapeExt.prototype.__class__ = PxShapeExt;
+PxShapeExt.__cache__ = {};
+Module['PxShapeExt'] = PxShapeExt;
+
+PxShapeExt.prototype['getGlobalPose'] = PxShapeExt.prototype.getGlobalPose = /** @suppress {undefinedVars, duplicate} @this{Object} */function(shape, actor) {
+  var self = this.ptr;
+  if (shape && typeof shape === 'object') shape = shape.ptr;
+  if (actor && typeof actor === 'object') actor = actor.ptr;
+  return wrapPointer(_emscripten_bind_PxShapeExt_getGlobalPose_2(self, shape, actor), PxTransform);
+};;
+
+PxShapeExt.prototype['getWorldBounds'] = PxShapeExt.prototype.getWorldBounds = /** @suppress {undefinedVars, duplicate} @this{Object} */function(shape, actor, inflation) {
+  var self = this.ptr;
+  if (shape && typeof shape === 'object') shape = shape.ptr;
+  if (actor && typeof actor === 'object') actor = actor.ptr;
+  if (inflation && typeof inflation === 'object') inflation = inflation.ptr;
+  if (inflation === undefined) { return wrapPointer(_emscripten_bind_PxShapeExt_getWorldBounds_2(self, shape, actor), PxBounds3) }
+  return wrapPointer(_emscripten_bind_PxShapeExt_getWorldBounds_3(self, shape, actor, inflation), PxBounds3);
+};;
+
+  PxShapeExt.prototype['__destroy__'] = PxShapeExt.prototype.__destroy__ = /** @suppress {undefinedVars, duplicate} @this{Object} */function() {
+  var self = this.ptr;
+  _emscripten_bind_PxShapeExt___destroy___0(self);
 };
 // PxShape
 /** @suppress {undefinedVars, duplicate} @this{Object} */function PxShape() { throw "cannot construct a PxShape, no constructor in IDL" }
@@ -32288,6 +32434,13 @@ SupportFunctions.prototype['PxContactPairHeader_getActor'] = SupportFunctions.pr
   return wrapPointer(_emscripten_bind_SupportFunctions_PxContactPairHeader_getActor_2(self, pairHeader, index), PxActor);
 };;
 
+SupportFunctions.prototype['PxContactPair_getShape'] = SupportFunctions.prototype.PxContactPair_getShape = /** @suppress {undefinedVars, duplicate} @this{Object} */function(pairHeader, index) {
+  var self = this.ptr;
+  if (pairHeader && typeof pairHeader === 'object') pairHeader = pairHeader.ptr;
+  if (index && typeof index === 'object') index = index.ptr;
+  return wrapPointer(_emscripten_bind_SupportFunctions_PxContactPair_getShape_2(self, pairHeader, index), PxShape);
+};;
+
 SupportFunctions.prototype['PxScene_getActiveActors'] = SupportFunctions.prototype.PxScene_getActiveActors = /** @suppress {undefinedVars, duplicate} @this{Object} */function(scene) {
   var self = this.ptr;
   if (scene && typeof scene === 'object') scene = scene.ptr;
@@ -34287,18 +34440,10 @@ JavaPassThroughFilterShader.prototype['filterShader'] = JavaPassThroughFilterSha
   else addOnPreMain(setupEnums);
 })();
 
-// Reassign global PhysX to the loaded module:
-this['PhysX'] = Module;
+PhysX = createModule;
 
 
-  return PhysX.ready
+  return createModule.ready
 }
 );
 })();
-if (typeof exports === 'object' && typeof module === 'object')
-      module.exports = PhysX;
-    else if (typeof define === 'function' && define['amd'])
-      define([], function() { return PhysX; });
-    else if (typeof exports === 'object')
-      exports["PhysX"] = PhysX;
-    
